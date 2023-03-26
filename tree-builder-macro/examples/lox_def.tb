@@ -1,0 +1,24 @@
+# Basic expression definition in Lox
+Expression => Literal | Unary | Binary | Grouping ;
+
+# Grouping of expressions
+Grouping   => "(" , Expression , ")"; # Inline comment
+
+Number     => Integer <Integer> 
+            | Float <Float> ;
+Literal    => "\"", str, "\"" <String>| Number <Numeric> | "true"<True> | "false" <False> | "nil" <Nil> ;
+
+BinaryOp   => "+" <Plus> | "-" <Minus>
+            | "*" <Star> | "/" <Slash>
+            | "=" <Equal> |"==" <EqualEqual>
+            | "!" <Bang> |"!=" <BangEqual>
+            | "<" <Less> | ">=" <LessEqual> ;
+
+Binary     => Expression, BinaryOp, Expression ;
+
+
+UnaryOp    => "-" <Minus> | "!" <Bang> ;
+Unary      => UnaryOp, Expression ;
+
+Float    => ("-" | "+")?, \d+, (".", \d+)? , (("E" | "e"), ("-" | "+")?, \d+)? ;
+Integer  => "-"?, [0-9]+, ("E", ("-" | "+"), [0-a]+)? ;
