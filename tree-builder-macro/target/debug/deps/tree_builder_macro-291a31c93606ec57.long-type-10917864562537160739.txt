@@ -1,1 +1,0 @@
-(for<'a> fn(&'a str) -> Result<(&'a str, parser_ast::StructRule), nom::Err<nom::error::Error<&'a str>>> {struct_rule}, for<'a> fn(&'a str) -> Result<(&'a str, parser_ast::RegRule), nom::Err<nom::error::Error<&'a str>>> {parsing::regex::rule})
