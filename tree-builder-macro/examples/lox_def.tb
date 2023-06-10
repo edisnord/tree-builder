@@ -4,9 +4,9 @@ Expression => Literal | Unary | Binary | Grouping ;
 # Grouping of expressions
 Grouping   => "(" , Expression , ")"; # Inline comment
 
-Number     => Integer <Integer> 
-            | Float <Float> ;
-Literal    => "\"", str, "\"" <String>| Number <Numeric> | "true"<True> | "false" <False> | "nil" <Nil> ;
+Number     => @Integer <Integer>
+            | @Float <Float> ;
+Literal    => @String <String> | @Number <Numeric> | "true" <True> | "false" <False> | "nil" <Nil> ;
 
 BinaryOp   => "+" <Plus> | "-" <Minus>
             | "*" <Star> | "/" <Slash>
@@ -20,5 +20,6 @@ Binary     => Expression, BinaryOp, Expression ;
 UnaryOp    => "-" <Minus> | "!" <Bang> ;
 Unary      => UnaryOp, Expression ;
 
-Float    => ("-" | "+")?, \d+, (".", \d+)? , (("E" | "e"), ("-" | "+")?, \d+)? ;
-Integer  => "-"?, [0-9]+, ("E", ("-" | "+"), [0-a]+)? ;
+Float    r=> ("-" | "+")?, \d+, (".", \d+)? , (("E" | "e"), ("-" | "+")?, \d+)? ;
+Integer  r=> "-"?, [0-9]+, ("E", ("-" | "+"), [0-a]+)? ;
+StringLit   r=> "\"", ("\\", . | [^\"])*, "\"";

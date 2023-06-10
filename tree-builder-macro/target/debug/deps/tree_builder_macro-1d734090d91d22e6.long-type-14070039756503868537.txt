@@ -1,0 +1,1 @@
+nom::Map<for<'a> fn(&'a str) -> Result<(&'a str, parser_ast::Factor), nom::Err<VerboseError<&'a str>>> {parsing::factor}, [closure@src/parser/parsing.rs:230:24: 230:32], parser_ast::Factor>

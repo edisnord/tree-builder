@@ -2,19 +2,18 @@ use super::parser_ast::*;
 
 use nom::{
     branch::alt,
-    bytes::complete::{tag, take_until, take_while},
+    bytes::complete::{tag, take_while},
     character::complete::char,
     character::complete::one_of,
     character::complete::{alpha1, alphanumeric1, multispace0, multispace1},
-    combinator::{map, opt, recognize, value},
+    combinator::{map, opt, recognize},
     multi::many0_count,
     multi::{many0, separated_list1},
-    sequence::pair,
-    sequence::{delimited, preceded, separated_pair, terminated},
-    IResult, Parser,
+    sequence::{delimited, pair, preceded, separated_pair, terminated},
+    IResult, Parser, error::{ParseError, VerboseError},
 };
 
-fn include(input: &str) -> IResult<&str, Include> {
+fn include(input: &str) -> IResult<&str, Include, VerboseError<&str>> {
     alt((
         preceded(char('@'), grouping).map(Include::Grouping),
         preceded(char('@'), identifier)
@@ -23,17 +22,26 @@ fn include(input: &str) -> IResult<&str, Include> {
     ))(input)
 }
 
-fn identifier(input: &str) -> IResult<&str, &str> {
+fn regex(input: &str) -> IResult<&str, Include, VerboseError<&str>> {
+    alt((
+        preceded(char('r'), grouping).map(Include::Grouping),
+        preceded(char('r'), identifier)
+            .map(str::to_owned)
+            .map(Include::Ident),
+    ))(input)
+}
+
+fn identifier(input: &str) -> IResult<&str, &str, VerboseError<&str>> {
     recognize(pair(
         alt((alpha1, tag("_"))),
         many0_count(alt((alphanumeric1, tag("_")))),
     ))(input)
 }
 
-pub fn specification<'a>(input: &'a str) -> IResult<&str, Specification> {
-    let skip = move |input: &'a str| -> IResult<&str, Vec<&str>> {
+pub fn specification<'a>(input: &'a str) -> IResult<&str, Specification, VerboseError<&str>> {
+    let skip = move |input: &'a str| -> IResult<&str, Vec<&str>, VerboseError<&str>> {
         if input.is_empty() {
-            return Err(nom::Err::Error(nom::error::Error::new(
+            return Err(nom::Err::Error(ParseError::from_error_kind(
                 "",
                 nom::error::ErrorKind::Eof,
             )));
@@ -43,12 +51,15 @@ pub fn specification<'a>(input: &'a str) -> IResult<&str, Specification> {
 
     delimited(
         skip,
-        separated_list1(skip, rule).map(Specification),
+        separated_list1(skip, alt((
+                    map(struct_rule, RuleKind::StructRule),
+                    map(regex::rule, RuleKind::RegexRule)))
+            ).map(Specification),
         opt(skip),
     )(input)
 }
 
-fn comment(input: &str) -> IResult<&str, &str> {
+fn comment(input: &str) -> IResult<&str, &str, VerboseError<&str>> {
     preceded(
         multispace0,
         delimited(
@@ -59,7 +70,7 @@ fn comment(input: &str) -> IResult<&str, &str> {
     )(input)
 }
 
-fn field_name(input: &str) -> IResult<&str, &str> {
+fn field_name(input: &str) -> IResult<&str, &str, VerboseError<&str>> {
     delimited(
         pair(tag("<"), multispace0),
         identifier,
@@ -67,7 +78,7 @@ fn field_name(input: &str) -> IResult<&str, &str> {
     )(input)
 }
 
-fn whitespace(input: &str) -> IResult<&str, &str> {
+fn whitespace(input: &str) -> IResult<&str, &str, VerboseError<&str>> {
     alt((comment, multispace1))(input)
 }
 
@@ -80,16 +91,17 @@ mod metacharacters {
         combinator::value,
         sequence::{delimited, preceded, separated_pair},
         IResult, Parser,
+        error::VerboseError
     };
 
-    fn squarebrackets(input: &str) -> IResult<&str, Vec<char>> {
+    fn squarebrackets(input: &str) -> IResult<&str, Vec<char>, VerboseError<&str>> {
         alt((
             sb_char_range,
             take_until("]").map(str::chars).map(Iterator::collect),
         ))(input)
     }
 
-    fn sb_char_range(input: &str) -> IResult<&str, Vec<char>> {
+    fn sb_char_range(input: &str) -> IResult<&str, Vec<char>, VerboseError<&str>> {
         let lowercase = "abcdefghijklmnopqrtstuvwxyz";
         let uppercase = "ABCDEFGHIJKLNMNOPQRSTUVXYZ";
         let digit = "0123456789";
@@ -106,11 +118,11 @@ mod metacharacters {
         .parse(input)
     }
 
-    pub fn metacharacter(input: &str) -> IResult<&str, Metacharacter> {
+    pub fn metacharacter(input: &str) -> IResult<&str, Metacharacter, VerboseError<&str>> {
         use Metacharacter::*;
         alt((
             preceded(
-                char('\\'),
+                char('#'),
                 alt((
                     value(AlphaNumericUnderscore, char('w')),
                     value(NonAlphaNumericUnderscore, char('W')),
@@ -127,17 +139,16 @@ mod metacharacters {
     }
 }
 
-fn term(input: &str) -> IResult<&str, Term> {
+fn term(input: &str) -> IResult<&str, Term, VerboseError<&str>> {
     alt((
         map(include, Term::Include),
         map(grouping, Term::Grouping),
         map(terminal::terminal, Term::Terminal),
         map(identifier, |ident| Term::Ident(ident.to_string())),
-        map(metacharacters::metacharacter, Term::Metacharacter),
     ))(input)
 }
 
-fn factor(input: &str) -> IResult<&str, Factor> {
+fn factor(input: &str) -> IResult<&str, Factor, VerboseError<&str>> {
     alt((
         map(terminated(term, tag("?")), Factor::Optional),
         map(terminated(term, tag("*")), Factor::ZeroOrMore),
@@ -146,7 +157,7 @@ fn factor(input: &str) -> IResult<&str, Factor> {
     ))(input)
 }
 
-fn grouping(input: &str) -> IResult<&str, Grouping> {
+fn grouping(input: &str) -> IResult<&str, Grouping, VerboseError<&str>> {
     delimited(
         pair(char('('), multispace0),
         rhs,
@@ -157,23 +168,23 @@ fn grouping(input: &str) -> IResult<&str, Grouping> {
     .parse(input)
 }
 
-fn rhs(input: &str) -> IResult<&str, Rhs> {
+fn rhs(input: &str) -> IResult<&str, Rhs, VerboseError<&str>> {
     alternations.map(Rhs).parse(input)
 }
 
-fn lhs(input: &str) -> IResult<&str, &str> {
+fn lhs(input: &str) -> IResult<&str, &str, VerboseError<&str>> {
     identifier(input)
 }
 
-fn rule<'a>(input: &'a str) -> IResult<&str, Rule> {
-    let rule_separator = |input: &'a str| -> IResult<&str, &str> {
+fn struct_rule<'a>(input: &'a str) -> IResult<&str, StructRule, VerboseError<&str>> {
+    let rule_separator = |input: &'a str| -> IResult<&str, &str, VerboseError<&str>> {
         delimited(multispace0, tag("=>"), multispace0)(input)
     };
 
     terminated(
         delimited(
             multispace0,
-            separated_pair(lhs, rule_separator, rhs).map(|(lhs, rhs)| Rule {
+            separated_pair(lhs, rule_separator, rhs).map(|(lhs, rhs)| StructRule {
                 lhs: lhs.to_string(),
                 rhs,
             }),
@@ -183,11 +194,11 @@ fn rule<'a>(input: &'a str) -> IResult<&str, Rule> {
     )(input)
 }
 
-fn alternation_body(input: &str) -> IResult<&str, (Concatenation, Option<&str>)> {
+fn alternation_body(input: &str) -> IResult<&str, (Concatenation, Option<&str>), VerboseError<&str>> {
     separated_pair(concatenation, multispace0, opt(field_name))(input)
 }
 
-fn alternation(input: &str) -> IResult<&str, Alternation> {
+fn alternation(input: &str) -> IResult<&str, Alternation, VerboseError<&str>> {
     separated_pair(concatenation, multispace0, opt(field_name))(input).map(
         |(rem, (concatenation, identifier))| {
             (
@@ -201,18 +212,18 @@ fn alternation(input: &str) -> IResult<&str, Alternation> {
     )
 }
 
-fn alternations(input: &str) -> IResult<&str, Vec<Alternation>> {
+fn alternations(input: &str) -> IResult<&str, Vec<Alternation>, VerboseError<&str>> {
     alt((
         separated_list1(alternation_separator, alternation),
         alternation.map(|x| vec![x]),
     ))(input)
 }
 
-fn alternation_separator(input: &str) -> IResult<&str, char> {
+fn alternation_separator(input: &str) -> IResult<&str, char, VerboseError<&str>> {
     delimited(multispace0, char('|'), multispace0)(input)
 }
 
-fn concatenation(input: &str) -> IResult<&str, Concatenation> {
+fn concatenation(input: &str) -> IResult<&str, Concatenation, VerboseError<&str>> {
     delimited(
         multispace0,
         alt((
@@ -224,8 +235,112 @@ fn concatenation(input: &str) -> IResult<&str, Concatenation> {
     .map(|(rem, output)| (rem, Concatenation(output)))
 }
 
-fn concat_separator(input: &str) -> IResult<&str, char> {
+fn concat_separator(input: &str) -> IResult<&str, char, VerboseError<&str>> {
     delimited(multispace0, char(','), multispace0)(input)
+}
+
+pub mod regex {
+    use nom::{
+        branch::alt,
+        bytes::complete::tag,
+        character::complete::char,
+        character::complete::multispace0,
+        combinator::map,
+        multi::separated_list1,
+        sequence::{delimited, pair, separated_pair, terminated},
+        error::VerboseError,
+        IResult, Parser,
+    };
+
+    use crate::parser::parser_ast::{
+        RegAlternation, RegConcatenation, RegFactor, RegGrouping, RegRhs, RegRule, RegTerm
+    };
+
+    fn factor(input: &str) -> IResult<&str, RegFactor, VerboseError<&str>> {
+        alt((
+            map(terminated(term, tag("?")), RegFactor::Optional),
+            map(terminated(term, tag("*")), RegFactor::ZeroOrMore),
+            map(terminated(term, tag("+")), RegFactor::OneOrMore),
+            map(term, RegFactor::Term),
+        ))(input)
+    }
+
+    fn term(input: &str) -> IResult<&str, RegTerm, VerboseError<&str>> {
+        alt((
+            map(super::metacharacters::metacharacter, RegTerm::Metacharacter),
+            map(grouping, RegTerm::Grouping),
+            map(super::terminal::terminal, RegTerm::Terminal),
+            map(super::identifier, |ident| RegTerm::Ident(ident.to_string())),
+        ))(input)
+    }
+
+    fn grouping(input: &str) -> IResult<&str, RegGrouping, VerboseError<&str>> {
+        delimited(
+            pair(char('('), multispace0),
+            rhs,
+            pair(multispace0, char(')')),
+        )
+        .map(Box::new)
+        .map(|x| RegGrouping(x, None))
+        .parse(input)
+    }
+
+    fn rhs(input: &str) -> IResult<&str, RegRhs, VerboseError<&str>> {
+        alternations.map(RegRhs).parse(input)
+    }
+
+    fn lhs(input: &str) -> IResult<&str, &str, VerboseError<&str>> {
+        super::identifier(input)
+    }
+
+    pub fn rule<'a>(input: &'a str) -> IResult<&str, RegRule, VerboseError<&str>> {
+        let rule_separator = |input: &'a str| -> IResult<&str, &str, VerboseError<&str>> {
+            delimited(multispace0, tag("#=>"), multispace0)(input)
+        };
+
+        terminated(
+            delimited(
+                multispace0,
+                separated_pair(lhs, rule_separator, rhs).map(|(lhs, rhs)| RegRule {
+                    lhs: lhs.to_string(),
+                    rhs,
+                }),
+                multispace0,
+            ),
+            char(';'),
+        )(input)
+    }
+
+    fn alternation(input: &str) -> IResult<&str, RegAlternation, VerboseError<&str>> {
+        map(concatenation, RegAlternation)(input)
+    }
+
+    fn alternations(input: &str) -> IResult<&str, Vec<RegAlternation>, VerboseError<&str>> {
+        alt((
+            separated_list1(alternation_separator, alternation),
+            alternation.map(|x| vec![x]),
+        ))(input)
+    }
+
+    fn alternation_separator(input: &str) -> IResult<&str, char, VerboseError<&str>> {
+        delimited(multispace0, char('|'), multispace0)(input)
+    }
+
+    fn concatenation(input: &str) -> IResult<&str, RegConcatenation, VerboseError<&str>> {
+        map(delimited(
+            multispace0,
+            alt((
+                separated_list1(concat_separator, factor),
+                factor.map(|result| vec![result]),
+            )),
+            multispace0,
+        ), RegConcatenation)(input)
+
+    }
+
+    fn concat_separator(input: &str) -> IResult<&str, char, VerboseError<&str>> {
+        delimited(multispace0, char(','), multispace0)(input)
+    }
 }
 
 mod terminal {
@@ -233,7 +348,7 @@ mod terminal {
     use nom::bytes::streaming::is_not;
     use nom::character::streaming::{char, multispace1};
     use nom::combinator::{map, value, verify};
-    use nom::error::FromExternalError;
+    use nom::error::{FromExternalError, VerboseError};
     use nom::error::ParseError;
     use nom::multi::fold_many0;
     use nom::sequence::{delimited, preceded};
@@ -291,7 +406,7 @@ mod terminal {
         ))(input)
     }
 
-    pub fn terminal<'a>(input: &'a str) -> IResult<&'a str, Terminal> {
+    pub fn terminal<'a>(input: &'a str) -> IResult<&'a str, Terminal, VerboseError<&str>> {
         let build_string = fold_many0(parse_fragment, String::new, |mut string, fragment| {
             match fragment {
                 StringFragment::Literal(s) => string.push_str(s),
@@ -418,7 +533,6 @@ mod tests {
             .unwrap()
             .1;
         assert_eq!(Metacharacter::AllChars, output);
-        
     }
 
     #[test]
@@ -429,22 +543,22 @@ mod tests {
         # Grouping of expressions
         Grouping   => "(" , Expression , ")"; # Inline comment
 
-        Number     => Integer <Integer> 
+        Number     => Integer <Integer>
                     | Float <Float> ;
         Literal    => "\"", @([^"\]*, ("\\",.,[^"\]*)*), "\"" <String>| Number <Numeric> | "true"<True> | "false" <False> | "nil" <Nil> ;
-        
+
         BinaryOp   => "+" <Plus> | "-" <Minus>
                     | "*" <Star> | "/" <Slash>
                     | "=" <Equal> |"==" <EqualEqual>
                     | "!" <Bang> |"!=" <BangEqual>
                     | "<" <Less> | ">=" <LessEqual> ;
-        
+
         Binary     => Expression, BinaryOp, Expression ;
-        
-        
+
+
         UnaryOp    => "-" <Minus> | "!" <Bang> ;
         Unary      => UnaryOp, Expression ;
-        
+
         Float    => ("-" | "+")?, \d+, (".", \d+)? , (("E" | "e"), ("-" | "+")?, \d+)? ;
         Integer  => "-"?, [0-9]+, ("E", ("-" | "+"), [0-a]+)? ;"#;
 
@@ -454,7 +568,7 @@ mod tests {
             vec![
                 rule("Expression => Literal | Unary | Binary | Grouping ;"),
                 rule(r#"Grouping   => "(" , Expression , ")";"#),
-                rule(r#"Number     => Integer <Integer> 
+                rule(r#"Number     => Integer <Integer>
                                     | Float <Float> ;"#),
                 rule(r#"Literal    => "\"", @([^"\]*, ("\\",.,[^"\]*)*), "\"" <String>| Number <Numeric> | "true"<True> | "false" <False> | "nil" <Nil> ;"#),
                 rule(r#"BinaryOp   => "+" <Plus> | "-" <Minus>

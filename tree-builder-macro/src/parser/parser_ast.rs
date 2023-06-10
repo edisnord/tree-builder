@@ -1,3 +1,5 @@
+use quote::{ToTokens, quote, format_ident, TokenStreamExt};
+
 /// Representation of a terminal in treebuilder syntax
 ///
 /// Terminal example: "Terminal" -> Terminal("Terminal".to_owned())
@@ -20,11 +22,17 @@ pub struct Terminal(pub String);
 /// If there is only one alternation in a Rhs, the AST node generated will be a tuple struct,
 /// but if there is more than one alternations are equivalent to an enum's variants, with their
 /// names being given inside \<\> tags in the alternation. You cannot have alternations without
-/// identifiers if there are more than one alternations.                                                      
+/// identifiers if there are more than one alternations.
 #[derive(PartialEq, Eq, Debug)]
 pub struct Alternation {
     pub concatenation: Concatenation,
     pub identifier: Option<String>,
+}
+
+#[derive(PartialEq, Eq, Debug)]
+pub enum RuleKind {
+    StructRule(StructRule),
+    RegexRule(RegRule)
 }
 
 /// Representation of a Rule, the main building block of treebuilder's syntax
@@ -33,7 +41,7 @@ pub struct Alternation {
 /// Rhs represents the contents of said struct/enum. A program will generate as many structs/enums
 /// as there are rules in a program.
 #[derive(PartialEq, Eq, Debug)]
-pub struct Rule {
+pub struct StructRule {
     pub lhs: String,
     pub rhs: Rhs,
 }
@@ -49,40 +57,26 @@ pub struct Concatenation(pub Vec<Factor>);
 /// In parser generation factors help determine how many times a term may be parsed
 #[derive(PartialEq, Eq, Debug)]
 pub enum Factor {
-    Optional(Term),
-    ZeroOrMore(Term),
-    OneOrMore(Term),
+    Optional(Term), // opt()
+    ZeroOrMore(Term), // many0
+    OneOrMore(Term), // many1
     Term(Term),
 }
 
-#[derive(PartialEq, Eq, Debug, Clone)]
-pub enum Metacharacter {
-    AllChars,
-    Digits,
-    NonDigits,
-    AlphaNumericUnderscore,
-    NonAlphaNumericUnderscore,
-    Whitespace,
-    NonWhitespace,
-    SquareBrackets(Vec<char>),
-    ExcludingSquareBrackets(Vec<char>),
-}
 
 /// A term is the smallest part of treebuilder's syntax, represents either a terminal
 /// a grouping, an identifier, inclusion or grouping
-/// 
+///
 /// in AST generation only Includes have impact in the amount of elements inside a tuple variant,
 /// in parser generation all of the variants of a term have an impact in the selection of the nom parser to be used
 /// for parsing
 #[derive(PartialEq, Eq, Debug)]
 pub enum Term {
-    Metacharacter(Metacharacter),
-    Terminal(Terminal),
-    Grouping(Grouping),
-    Ident(String),
-    Include(Include),
+    Terminal(Terminal), // tag()
+    Grouping(Grouping), // po mendoj ta bej funksion mvete
+    Ident(String), // Parser i identit
+    Include(Include), // Nevojitet
 }
-
 
 #[derive(PartialEq, Eq, Debug)]
 pub enum Include {
@@ -97,4 +91,51 @@ pub struct Grouping(pub Box<Rhs>);
 pub struct Rhs(pub Vec<Alternation>);
 
 #[derive(PartialEq, Eq, Debug)]
-pub struct Specification(pub Vec<Rule>);
+pub struct Specification(pub Vec<RuleKind>);
+
+#[derive(PartialEq, Eq, Debug)]
+pub struct RegRule {
+    pub lhs: String,
+    pub rhs: RegRhs
+}
+
+#[derive(PartialEq, Eq, Debug)]
+pub struct RegRhs (pub Vec<RegAlternation>);
+
+#[derive(PartialEq, Eq, Debug)]
+pub struct RegAlternation(pub RegConcatenation);
+
+#[derive(PartialEq, Eq, Debug)]
+pub struct RegConcatenation(pub Vec<RegFactor>);
+
+#[derive(PartialEq, Eq, Debug)]
+pub enum RegFactor {
+    Optional(RegTerm), // opt()
+    ZeroOrMore(RegTerm), // many0
+    OneOrMore(RegTerm), // many1
+    Term(RegTerm),
+}
+
+#[derive(PartialEq, Eq, Debug)]
+pub enum RegTerm {
+    Terminal(Terminal), // tag()
+    Grouping(RegGrouping), // ketu mendoj duhet hapur new block (ose perdor alt)
+    Ident(String), // Parser i identit (Error checking, duhet te jete regex parser sesben)
+    Metacharacter(Metacharacter)
+}
+
+#[derive(PartialEq, Eq, Debug)]
+pub struct RegGrouping(pub Box<RegRhs>, pub Option<String>);
+
+#[derive(PartialEq, Eq, Debug, Clone)]
+pub enum Metacharacter {
+    AllChars, // take(1)
+    Digits, // digit()
+    NonDigits, // non_digit()
+    AlphaNumericUnderscore, // alpha_num_undersc()
+    NonAlphaNumericUnderscore, // non_alpha_num_undersc()
+    Whitespace,
+    NonWhitespace,
+    SquareBrackets(Vec<char>),
+    ExcludingSquareBrackets(Vec<char>),
+}
