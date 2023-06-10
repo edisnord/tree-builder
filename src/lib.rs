@@ -1,5 +1,5 @@
 pub use tree_builder_macro::build_tree;
-pub use tree_builder_macro::tb_regex;
+pub use tree_builder_macro::regex;
 pub mod __private;
 pub mod public_parsers;
 
