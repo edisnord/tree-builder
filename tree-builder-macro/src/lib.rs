@@ -10,7 +10,7 @@ trait Parser {
 }
 
 #[proc_macro]
-pub fn build_tree(input: TokenStream) -> TokenStream {
+pub fn build_tree(_: TokenStream) -> TokenStream {
     todo!()
 }
 
@@ -20,7 +20,7 @@ pub fn regex(input: TokenStream) -> TokenStream {
     let input: Vec<&str> = input.split_whitespace().collect();
     let input = input.join("");
     eprintln!("{}", input);
-    let mut ast = match parser::rule(&input){
+    let mut ast = match parser::reg_rule(&input){
         Ok((_, out)) => out,
         Err(nom::Err::Error(e)) => panic!("{}", nom::error::convert_error(input.as_str(), e)),
         _ => panic!("??")
@@ -28,7 +28,15 @@ pub fn regex(input: TokenStream) -> TokenStream {
     regex_builder::rule(&mut ast).into()
 }
 
-#[proc_macro_derive(Parser)]
-pub fn tb_parser(input: TokenStream) -> TokenStream {
-    todo!()
+#[proc_macro]
+pub fn ast(input: TokenStream) -> TokenStream {
+    let input = input.to_string();
+    let input: Vec<&str> = input.split_whitespace().collect();
+    let input = input.join("");
+    let ast = match parser::ast_rule(&input){
+        Ok((_, out)) => out,
+        Err(nom::Err::Error(e)) => panic!("{}", nom::error::convert_error(input.as_str(), e)),
+        _ => panic!("??")
+    };
+    ast_builder::ast_from_rule_no_alts(&ast).into()
 }

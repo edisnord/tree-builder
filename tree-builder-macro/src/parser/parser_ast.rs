@@ -1,5 +1,3 @@
-use quote::{ToTokens, quote, format_ident, TokenStreamExt};
-
 /// Representation of a terminal in treebuilder syntax
 ///
 /// Terminal example: "Terminal" -> Terminal("Terminal".to_owned())
@@ -48,7 +46,13 @@ pub struct StructRule {
 
 /// Representation of a concatenation of many factors in treebuilder's syntax
 #[derive(PartialEq, Eq, Debug)]
-pub struct Concatenation(pub Vec<Factor>);
+pub struct Concatenation(pub Vec<ConcatKind>);
+
+#[derive(PartialEq, Eq, Debug)]
+pub enum ConcatKind{
+    Factor(Factor),
+    Include(Include)
+}
 
 /// Representation of a factor, which may either be a repetition modifier for a term,
 /// or simply a term. In AST generation factors cause terms to be either wrapped in a
@@ -63,6 +67,15 @@ pub enum Factor {
     Term(Term),
 }
 
+impl Factor {
+    pub fn is_grouping(&self) -> bool {
+        matches!(self, Factor::Term(Term::Grouping(_))
+                     | Factor::Optional(Term::Grouping(_))
+                     | Factor::OneOrMore(Term::Grouping(_))
+                     | Factor::ZeroOrMore(Term::Grouping(_)))
+    }
+}
+
 
 /// A term is the smallest part of treebuilder's syntax, represents either a terminal
 /// a grouping, an identifier, inclusion or grouping
@@ -74,18 +87,15 @@ pub enum Factor {
 pub enum Term {
     Terminal(Terminal), // tag()
     Grouping(Grouping), // po mendoj ta bej funksion mvete
+    Metacharacter(Metacharacter), //The king is back
     Ident(String), // Parser i identit
-    Include(Include), // Nevojitet
 }
 
 #[derive(PartialEq, Eq, Debug)]
-pub enum Include {
-    Grouping(Grouping),
-    Ident(String),
-}
+pub struct Include(pub Factor);
 
 #[derive(PartialEq, Eq, Debug)]
-pub struct Grouping(pub Box<Rhs>);
+pub struct Grouping(pub Box<Concatenation>);
 
 #[derive(PartialEq, Eq, Debug)]
 pub struct Rhs(pub Vec<Alternation>);
