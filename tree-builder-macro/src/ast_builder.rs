@@ -1,7 +1,10 @@
-use proc_macro2::TokenStream as TokenStream2;
 use crate::parser::parser_ast::{Alternation, Rhs};
+use proc_macro2::TokenStream as TokenStream2;
+use proc_macro2::{Ident, Span};
 
-use crate::parser::parser_ast::{ConcatKind, Concatenation, Factor, Grouping, Include, Term, StructRule};
+use crate::parser::parser_ast::{
+    ConcatKind, Concatenation, Factor, Grouping, Include, StructRule, Term,
+};
 use quote::quote;
 
 #[derive(Debug)]
@@ -82,22 +85,71 @@ impl<'a> IncludeAnalysis<'a> {
 
     pub fn concat_to_type(concatenation: &Concatenation) -> TokenStream2 {
         let analysis = IncludeAnalysis::analyze_concatenation(concatenation);
-        let analysis: Vec<TokenStream2> = analysis.iter()
-                                                  .map(IncludeAnalysis::generate_type)
-                                                  .collect();
+        let analysis: Vec<TokenStream2> = analysis
+            .iter()
+            .map(IncludeAnalysis::generate_type)
+            .collect();
         quote!((#(#analysis),*))
     }
 }
 
 pub fn ast_from_rule_no_alts(StructRule { lhs, rhs }: &StructRule) -> TokenStream2 {
-    let ident = proc_macro2::Ident::new(lhs, proc_macro2::Span::call_site());
+    let ident = proc_macro2::Ident::new(lhs, Span::call_site());
     let Rhs(alts) = rhs;
     let Alternation {
         ref concatenation,
         identifier: _,
     } = alts[0];
     let tupletyp = IncludeAnalysis::concat_to_type(concatenation);
-    quote!(struct #ident #tupletyp ;)
+    quote!(#[derive(Debug)]
+        struct #ident #tupletyp ;)
+}
+
+pub fn ast_from_rule(rule @ StructRule { lhs, rhs }: &StructRule) -> TokenStream2 {
+    let ident = Ident::new(lhs, Span::call_site());
+    let Rhs(alts) = rhs;
+    if alts.len() == 1 {
+        ast_from_rule_no_alts(rule)
+    } else {
+        let enum_variants = alts.iter().enumerate().map(
+            |(
+                num,
+                Alternation {
+                    concatenation,
+                    identifier,
+                },
+            ): (usize, &Alternation)| {
+                let Concatenation(factors) = concatenation;
+                if identifier.is_none() {
+                    if let &[ConcatKind::Include(Include(ref factor))] = factors.as_slice() {
+                        match factor {
+                            Factor::Term(Term::Ident(ident))
+                            | Factor::Optional(Term::Ident(ident))
+                            | Factor::OneOrMore(Term::Ident(ident))
+                            | Factor::ZeroOrMore(Term::Ident(ident)) => {
+                                let ident = Ident::new(&ident, Span::call_site());
+                                let tupletyp = IncludeAnalysis::concat_to_type(concatenation);
+                                quote!(#ident #tupletyp)
+                            }
+                            _ => panic!("In rule {}, alternation number {} was not given a variant name", ident.to_string(), num + 1),
+                        }
+                    } else {
+                        panic!("In rule {}, alternation number {} was not given a name", ident.to_string(), num + 1)
+                    }
+                } else {
+                    let ident = Ident::new(identifier.as_ref().unwrap(), Span::call_site());
+                    let tupletyp = IncludeAnalysis::concat_to_type(concatenation);
+                    quote!(#ident #tupletyp)
+                }
+            },
+        );
+        quote!(
+            #[derive(Debug)]
+            enum #ident {
+            #(#enum_variants),
+               *
+            })
+    }
 }
 
 #[cfg(test)]
@@ -118,6 +170,9 @@ mod tests {
             identifier: _,
         } = alts[0];
         let analsis = IncludeAnalysis::concat_to_type(concatenation);
-        panic!("{:#?}", analsis.to_string().split_whitespace().collect::<String>());
+        panic!(
+            "{:#?}",
+            analsis.to_string().split_whitespace().collect::<String>()
+        );
     }
 }

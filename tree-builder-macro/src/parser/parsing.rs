@@ -8,7 +8,7 @@ use nom::{
     character::complete::char,
     character::complete::one_of,
     character::complete::{alpha1, alphanumeric1, multispace0, multispace1},
-    combinator::{map, opt, recognize},
+    combinator::{map, opt, recognize, eof},
     error::{ParseError, VerboseError},
     multi::many0_count,
     multi::{many0, separated_list1},
@@ -265,7 +265,7 @@ pub fn rule<'a>(input: &'a str) -> IResult<&str, StructRule, VerboseError<&str>>
             }),
             multispace0,
         ),
-        char(';'),
+        alt((char(';'), map(eof, |_|'\0'))),
     )(input)
 }
 
@@ -337,7 +337,7 @@ pub mod regex {
                 }),
                 multispace0,
             ),
-            char(';'),
+            alt((char(';'), map(nom::combinator::eof, |_|'\0'))),
         )(input)
     }
 

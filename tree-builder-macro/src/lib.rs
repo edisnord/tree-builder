@@ -19,7 +19,6 @@ pub fn regex(input: TokenStream) -> TokenStream {
     let input = input.to_string();
     let input: Vec<&str> = input.split_whitespace().collect();
     let input = input.join("");
-    eprintln!("{}", input);
     let mut ast = match parser::reg_rule(&input){
         Ok((_, out)) => out,
         Err(nom::Err::Error(e)) => panic!("{}", nom::error::convert_error(input.as_str(), e)),
@@ -38,5 +37,5 @@ pub fn ast(input: TokenStream) -> TokenStream {
         Err(nom::Err::Error(e)) => panic!("{}", nom::error::convert_error(input.as_str(), e)),
         _ => panic!("??")
     };
-    ast_builder::ast_from_rule_no_alts(&ast).into()
+    ast_builder::ast_from_rule(&ast).into()
 }
