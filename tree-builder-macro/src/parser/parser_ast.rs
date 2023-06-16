@@ -30,7 +30,7 @@ pub struct Alternation {
 #[derive(PartialEq, Eq, Debug)]
 pub enum RuleKind {
     StructRule(StructRule),
-    RegexRule(RegRule)
+    RegexRule(RegRule),
 }
 
 /// Representation of a Rule, the main building block of treebuilder's syntax
@@ -49,9 +49,9 @@ pub struct StructRule {
 pub struct Concatenation(pub Vec<ConcatKind>);
 
 #[derive(PartialEq, Eq, Debug)]
-pub enum ConcatKind{
+pub enum ConcatKind {
     Factor(Factor),
-    Include(Include)
+    Include(Include),
 }
 
 /// Representation of a factor, which may either be a repetition modifier for a term,
@@ -61,21 +61,23 @@ pub enum ConcatKind{
 /// In parser generation factors help determine how many times a term may be parsed
 #[derive(PartialEq, Eq, Debug)]
 pub enum Factor {
-    Optional(Term), // opt()
+    Optional(Term),   // opt()
     ZeroOrMore(Term), // many0
-    OneOrMore(Term), // many1
+    OneOrMore(Term),  // many1
     Term(Term),
 }
 
 impl Factor {
     pub fn is_grouping(&self) -> bool {
-        matches!(self, Factor::Term(Term::Grouping(_))
-                     | Factor::Optional(Term::Grouping(_))
-                     | Factor::OneOrMore(Term::Grouping(_))
-                     | Factor::ZeroOrMore(Term::Grouping(_)))
+        matches!(
+            self,
+            Factor::Term(Term::Grouping(_))
+                | Factor::Optional(Term::Grouping(_))
+                | Factor::OneOrMore(Term::Grouping(_))
+                | Factor::ZeroOrMore(Term::Grouping(_))
+        )
     }
 }
-
 
 /// A term is the smallest part of treebuilder's syntax, represents either a terminal
 /// a grouping, an identifier, inclusion or grouping
@@ -85,17 +87,17 @@ impl Factor {
 /// for parsing
 #[derive(PartialEq, Eq, Debug)]
 pub enum Term {
-    Terminal(Terminal), // tag()
-    Grouping(Grouping), // po mendoj ta bej funksion mvete
+    Terminal(Terminal),           // tag()
+    Grouping(Grouping),           // po mendoj ta bej funksion mvete
     Metacharacter(Metacharacter), //The king is back
-    Ident(String), // Parser i identit
+    Ident(String),                // Parser i identit
 }
 
 #[derive(PartialEq, Eq, Debug)]
 pub struct Include(pub Factor);
 
 #[derive(PartialEq, Eq, Debug)]
-pub struct Grouping(pub Box<Concatenation>);
+pub struct Grouping(pub Box<Concatenation>, pub Option<String>);
 
 #[derive(PartialEq, Eq, Debug)]
 pub struct Rhs(pub Vec<Alternation>);
@@ -106,11 +108,11 @@ pub struct Specification(pub Vec<RuleKind>);
 #[derive(PartialEq, Eq, Debug)]
 pub struct RegRule {
     pub lhs: String,
-    pub rhs: RegRhs
+    pub rhs: RegRhs,
 }
 
 #[derive(PartialEq, Eq, Debug)]
-pub struct RegRhs (pub Vec<RegAlternation>);
+pub struct RegRhs(pub Vec<RegAlternation>);
 
 #[derive(PartialEq, Eq, Debug)]
 pub struct RegAlternation(pub RegConcatenation);
@@ -120,18 +122,18 @@ pub struct RegConcatenation(pub Vec<RegFactor>);
 
 #[derive(PartialEq, Eq, Debug)]
 pub enum RegFactor {
-    Optional(RegTerm), // opt()
+    Optional(RegTerm),   // opt()
     ZeroOrMore(RegTerm), // many0
-    OneOrMore(RegTerm), // many1
+    OneOrMore(RegTerm),  // many1
     Term(RegTerm),
 }
 
 #[derive(PartialEq, Eq, Debug)]
 pub enum RegTerm {
-    Terminal(Terminal), // tag()
+    Terminal(Terminal),    // tag()
     Grouping(RegGrouping), // ketu mendoj duhet hapur new block (ose perdor alt)
-    Ident(String), // Parser i identit (Error checking, duhet te jete regex parser sesben)
-    Metacharacter(Metacharacter)
+    Ident(String),         // Parser i identit (Error checking, duhet te jete regex parser sesben)
+    Metacharacter(Metacharacter),
 }
 
 #[derive(PartialEq, Eq, Debug)]
@@ -139,10 +141,10 @@ pub struct RegGrouping(pub Box<RegRhs>, pub Option<String>);
 
 #[derive(PartialEq, Eq, Debug, Clone)]
 pub enum Metacharacter {
-    AllChars, // take(1)
-    Digits, // digit()
-    NonDigits, // non_digit()
-    AlphaNumericUnderscore, // alpha_num_undersc()
+    AllChars,                  // take(1)
+    Digits,                    // digit()
+    NonDigits,                 // non_digit()
+    AlphaNumericUnderscore,    // alpha_num_undersc()
     NonAlphaNumericUnderscore, // non_alpha_num_undersc()
     Whitespace,
     NonWhitespace,

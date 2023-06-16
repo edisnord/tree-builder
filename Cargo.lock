@@ -12,6 +12,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "dissimilar"
+version = "1.0.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "210ec60ae7d710bed8683e333e9d2855a8a56a3e9892b38bad3bb0d4d29b0d5e"
+
+[[package]]
 name = "glob"
 version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -129,6 +135,7 @@ version = "0.1.0"
 dependencies = [
  "nom",
  "tree-builder-macro",
+ "trybuild",
 ]
 
 [[package]]
@@ -139,7 +146,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
- "trybuild",
 ]
 
 [[package]]
@@ -149,6 +155,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "501dbdbb99861e4ab6b60eb6a7493956a9defb644fd034bc4a5ef27c693c8a3a"
 dependencies = [
  "basic-toml",
+ "dissimilar",
  "glob",
  "once_cell",
  "serde",

@@ -8,7 +8,7 @@ use nom::{
     character::complete::char,
     character::complete::one_of,
     character::complete::{alpha1, alphanumeric1, multispace0, multispace1},
-    combinator::{map, opt, recognize, eof},
+    combinator::{eof, map, opt, recognize},
     error::{ParseError, VerboseError},
     multi::many0_count,
     multi::{many0, separated_list1},
@@ -41,14 +41,7 @@ pub fn specification<'a>(input: &'a str) -> IResult<&str, Specification, Verbose
 
     delimited(
         skip,
-        separated_list1(
-            skip,
-            alt((
-                map(struct_rule, RuleKind::StructRule),
-                map(regex::rule, RuleKind::RegexRule),
-            )),
-        )
-        .map(Specification),
+        separated_list1(skip, rule).map(Specification),
         opt(skip),
     )(input)
 }
@@ -81,19 +74,22 @@ mod metacharacters {
     use crate::parser::parser_ast::Metacharacter;
     use nom::{
         branch::alt,
-        bytes::complete::{tag, take_until},
-        character::complete::{char, one_of},
-        combinator::value,
+        bytes::complete::tag,
+        character::complete::{char, one_of, anychar},
+        combinator::{value, map},
         error::VerboseError,
-        sequence::{delimited, preceded, separated_pair},
-        IResult, Parser,
+        sequence::{preceded, separated_pair},
+        IResult, Parser, multi::many_till,
     };
 
     fn squarebrackets(input: &str) -> IResult<&str, Vec<char>, VerboseError<&str>> {
-        alt((
-            sb_char_range,
-            take_until("]").map(str::chars).map(Iterator::collect),
-        ))(input)
+        map(many_till(
+            alt((
+                sb_char_range
+              , map(anychar, |x: char| vec![x])
+              ))
+            , char(']')), |(x, _): (Vec<Vec<char>>, char)| x.concat())
+        (input)
     }
 
     fn sb_char_range(input: &str) -> IResult<&str, Vec<char>, VerboseError<&str>> {
@@ -127,8 +123,8 @@ mod metacharacters {
                     value(NonDigits, char('D')),
                 )),
             ),
-            delimited(tag("[^"), squarebrackets, char(']')).map(ExcludingSquareBrackets),
-            delimited(char('['), squarebrackets, char(']')).map(SquareBrackets),
+            preceded(tag("[^"), squarebrackets).map(ExcludingSquareBrackets),
+            preceded(char('['), squarebrackets).map(SquareBrackets),
             char('.').map(|_| AllChars),
         ))(input)
     }
@@ -153,14 +149,14 @@ fn factor(input: &str) -> IResult<&str, Factor, VerboseError<&str>> {
 }
 
 fn grouping(input: &str) -> IResult<&str, Grouping, VerboseError<&str>> {
-    delimited(
-        pair(char('('), multispace0),
-        concatenation,
-        pair(multispace0, char(')')),
-    )
-    .map(Box::new)
-    .map(Grouping)
-    .parse(input)
+    map(
+        delimited(
+            pair(char('('), multispace0),
+            map(concatenation, Box::new),
+            pair(multispace0, char(')')),
+        ),
+        |x| Grouping(x, None),
+    )(input)
 }
 
 fn rhs(input: &str) -> IResult<&str, Rhs, VerboseError<&str>> {
@@ -172,7 +168,7 @@ fn lhs(input: &str) -> IResult<&str, &str, VerboseError<&str>> {
 }
 
 #[allow(dead_code)]
-fn struct_rule<'a>(input: &'a str) -> IResult<&str, StructRule, VerboseError<&str>> {
+pub fn struct_rule<'a>(input: &'a str) -> IResult<&str, StructRule, VerboseError<&str>> {
     let rule_separator = |input: &'a str| -> IResult<&str, &str, VerboseError<&str>> {
         delimited(multispace0, tag("=>"), multispace0)(input)
     };
@@ -186,7 +182,7 @@ fn struct_rule<'a>(input: &'a str) -> IResult<&str, StructRule, VerboseError<&st
             }),
             multispace0,
         ),
-        char(';'),
+        alt((char(';'), map(eof, |_| '\0'))),
     )(input)
 }
 
@@ -250,22 +246,14 @@ fn concat_separator(input: &str) -> IResult<&str, char, VerboseError<&str>> {
     delimited(multispace0, char(','), multispace0)(input)
 }
 
-#[allow(dead_code)]
-pub fn rule<'a>(input: &'a str) -> IResult<&str, StructRule, VerboseError<&str>> {
-    let rule_separator = |input: &'a str| -> IResult<&str, &str, VerboseError<&str>> {
-        delimited(multispace0, tag("=>"), multispace0)(input)
-    };
-
-    terminated(
-        delimited(
-            multispace0,
-            separated_pair(lhs, rule_separator, rhs).map(|(lhs, rhs)| StructRule {
-                lhs: lhs.to_string(),
-                rhs,
-            }),
-            multispace0,
-        ),
-        alt((char(';'), map(eof, |_|'\0'))),
+pub fn rule<'a>(input: &'a str) -> IResult<&str, RuleKind, VerboseError<&str>> {
+    delimited(
+        multispace0,
+        alt((
+            map(struct_rule, RuleKind::StructRule),
+            map(regex::rule, RuleKind::RegexRule),
+        )),
+        multispace0,
     )(input)
 }
 
@@ -337,7 +325,7 @@ pub mod regex {
                 }),
                 multispace0,
             ),
-            alt((char(';'), map(nom::combinator::eof, |_|'\0'))),
+            alt((char(';'), map(nom::combinator::eof, |_| '\0'))),
         )(input)
     }
 
@@ -453,11 +441,13 @@ mod terminal {
     }
 }
 
-//#[cfg(test)]
-//mod tests {
-//    use super::super::parsing::terminal::terminal;
-//    use super::metacharacters::metacharacter;
-//    use super::*;
+#[cfg(test)]
+mod tests {
+    use super::super::parsing::terminal::terminal;
+    use super::metacharacters::metacharacter;
+    use super::*;
+
+}
 //
 //    #[test]
 //    fn test_terminal() {
@@ -552,20 +542,21 @@ mod terminal {
 //        );
 //    }
 //
-//    #[test]
-//    fn test_metacharacters() {
-//        let output = metacharacter(r#"[^"\]"#).unwrap().1;
-//        assert_eq!(
-//            Metacharacter::ExcludingSquareBrackets(vec!['"', '\\']),
-//            output
-//        );
-//        let output = metacharacter(r#"["\]"#).unwrap().1;
-//        assert_eq!(Metacharacter::SquareBrackets(vec!['"', '\\']), output);
-//        let output = delimited(tag("aaa"), metacharacter, tag("bbb"))(r#"aaa.bbb"#)
-//            .unwrap()
-//            .1;
-//        assert_eq!(Metacharacter::AllChars, output);
-//    }
+    #[test]
+    fn test_metacharacters() {
+        let output = metacharacter(r#"[^"\]"#).unwrap().1;
+        assert_eq!(
+            Metacharacter::ExcludingSquareBrackets(vec!['"', '\\']),
+            output
+        );
+        let output = metacharacter(r#"["\]"#).unwrap().1;
+        assert_eq!(Metacharacter::SquareBrackets(vec!['"', '\\']), output);
+        let output = metacharacter(r#"[A-Za-z1-9]"#).unwrap().1;
+        let output = delimited(tag("aaa"), metacharacter, tag("bbb"))(r#"aaa.bbb"#)
+            .unwrap()
+            .1;
+        assert_eq!(Metacharacter::AllChars, output);
+    }
 //
 //    #[test]
 //    fn test_specification() {
