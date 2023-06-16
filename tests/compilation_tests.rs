@@ -9,3 +9,9 @@ fn regex_tests(){
     let t = trybuild::TestCases::new();
     t.pass("examples/test/regex*.rs");
 }
+
+#[test]
+fn struct_tests(){
+    let t = trybuild::TestCases::new();
+    t.pass("examples/test/struct*.rs");
+}
