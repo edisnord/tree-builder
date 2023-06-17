@@ -2,9 +2,8 @@ mod concatenation;
 mod factor;
 
 use crate::{
-    ast_builder::IncludeAnalysis,
     parser::parser_ast::{Alternation, ConcatKind, Concatenation, Factor, Grouping, Include, Term},
-    regex_builder::term::{identifier, metacharacter, terminal},
+    regex_builder::term::{identifier, metacharacter, terminal}, ast_builder::IncludeAnalysis,
 };
 use std::any::Any;
 
@@ -32,7 +31,7 @@ fn alternation(
     let name = get_variant_name(alt).unwrap();
     let fun_name = format_ident!("alt{}", num);
     quote! {
-        let #fun_name = |input| {
+        let #fun_name = |input: &'a str| {
                         #body
                         Ok((input, Self:: #name (#names)))
                     };
@@ -78,7 +77,7 @@ pub fn gen_parser(
     let ident = format_ident!("{}", lhs);
     quote! {
         impl tree_builder::Parser for #ident {
-            fn parse(input: &str) -> tree_builder::__private::nom::IResult<&str, std::boxed::Box<Self>, tree_builder::__private::nom::error::VerboseError<&str>> {
+            fn parse<'a>(input: &'a str) -> tree_builder::__private::nom::IResult<&str, std::boxed::Box<Self>, tree_builder::__private::nom::error::VerboseError<&str>> {
                 #rhs
                 return Ok((input, std::boxed::Box::new(result)))
             }
@@ -98,21 +97,30 @@ pub fn analyze_groupings<'a>(Concatenation(concs): &'a mut Concatenation) -> Tok
             ConcatKind::Factor(factor) => factor,
             ConcatKind::Include(Include(factor)) => factor,
         };
-        let ret_type = IncludeAnalysis::new(factor).generate_type();
+        let def_ret_val = quote!{()};
         let term = match factor {
             Factor::Term(ref mut term) => term,
             Factor::Optional(ref mut term) => term,
             Factor::OneOrMore(ref mut term) => term,
             Factor::ZeroOrMore(ref mut term) => term,
         };
+        let temp_term = term.clone();
         if let Term::Grouping(ref mut group @ Grouping(_, _)) = term {
             group.1 = Some(format!("group{}", count));
             count = count + 1usize;
-            let (rhs, names) = concatenation::concatenation(group.0.as_mut());
+            let ret_type = {
+                let temp_factor = Factor::Term(temp_term);
+                let analysis = IncludeAnalysis::new(&temp_factor);
+                analysis.generate_type()
+            };
+            let (rhs, mut names) = concatenation::concatenation(group.0.as_mut());
+            if names.is_empty() {
+                names = def_ret_val;
+            }
             let ident = format_ident!("{}", group.1.as_ref().unwrap());
             let closure = quote! {
-                let #ident: fn(&str) -> tree_builder::__private::nom::IResult<&str, #ret_type , tree_builder::__private::nom::error::VerboseError<&str>> =
-                |input| {
+                let #ident: fn(&'a str) -> tree_builder::__private::nom::IResult<&str, #ret_type , tree_builder::__private::nom::error::VerboseError<&str>> =
+                |input: &'a str| {
                         #rhs
                         Ok((input, (#names)))
                 };

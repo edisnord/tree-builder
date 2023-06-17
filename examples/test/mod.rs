@@ -6,3 +6,8 @@ mod regex_terminal;
 mod regex_grouping;
 mod regex_alternations;
 mod struct_terminal;
+mod struct_metacharacter;
+mod struct_ident;
+mod struct_include;
+mod struct_alternation;
+mod struct_grouping;

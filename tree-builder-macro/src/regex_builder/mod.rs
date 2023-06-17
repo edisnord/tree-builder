@@ -42,7 +42,7 @@ pub fn righths<'a>(rhs: &'a mut RegRhs) -> TokenStream2 {
             |(name, RegAlternation(conc)): (TokenStream2, &'a RegAlternation)| -> TokenStream2 {
                 let body = concatenation::concatenation(conc);
                 quote! {
-                    let #name = |input| {
+                    let #name = |input: &'a str| {
                                     let mut result: std::vec::Vec<&str> = std::vec::Vec::new();
                                     #body
                                     let mut result = result.join("");
@@ -84,7 +84,7 @@ pub fn rule(RegRule { lhs, rhs }: &mut RegRule) -> TokenStream2 {
         struct #ident(String);
 
         impl tree_builder::Parser for #ident {
-            fn parse(input: &str) -> tree_builder::__private::nom::IResult<&str, std::boxed::Box<Self>, tree_builder::__private::nom::error::VerboseError<&str>> {
+            fn parse<'a>(input: &'a str) -> tree_builder::__private::nom::IResult<&str, std::boxed::Box<Self>, tree_builder::__private::nom::error::VerboseError<&str>> {
                 #rhs
                 Ok((input, std::boxed::Box::new(Self(result))))
             }
@@ -111,8 +111,8 @@ fn analyze_groupings<'a>(RegRhs(alts): &'a mut RegRhs) -> TokenStream2 {
                 let rhs = righths(group.0.as_mut());
                 let ident = format_ident!("{}", group.1.as_ref().unwrap());
                 let closure = quote! {
-                    let #ident: fn(&str) -> tree_builder::__private::nom::IResult<&str, String, tree_builder::__private::nom::error::VerboseError<&str>> =
-                    |input| {
+                    let #ident =
+                    |input: &'a str| {
                             let mut result: std::vec::Vec<&str> = std::vec::Vec::new();
                             #rhs
                             Ok((input, result))

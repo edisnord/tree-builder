@@ -1,19 +1,27 @@
 use crate::parser::parser_ast::{RegConcatenation, RegFactor, RegTerm};
 use proc_macro2::TokenStream as TokenStream2;
-use quote::{quote, format_ident};
+use quote::{format_ident, quote};
 
 pub fn concatenation(RegConcatenation(concs): &RegConcatenation) -> TokenStream2 {
     let declaration = quote! {let (input, res) = };
     let mapper = |factor: &RegFactor| match factor {
         RegFactor::Term(term) => {
-            let push = if matches!(term, RegTerm::Grouping(_)) {
+            let push = if matches!(term, RegTerm::Grouping(_) | RegTerm::Ident(_)) {
                 super::owned_push()
             } else {
                 super::standard_push()
             };
+            let post = match term {
+                RegTerm::Ident(name) => {
+                    let ident = format_ident!("{}", name);
+                    quote! {let #ident (res) = *res;}
+                }
+                _ => quote! {},
+            };
             let invocation = super::factor::term_invocation(term);
             quote! {
                 #declaration #invocation(input)?;
+                #post
                 #push
             }
         }
@@ -32,15 +40,18 @@ pub fn concatenation(RegConcatenation(concs): &RegConcatenation) -> TokenStream2
             let (push, post) = match term {
                 RegTerm::Ident(typ) => {
                     let ident = format_ident!("{}", typ);
-                    (super::owned_push(),
-                     quote!{
-                        let res: std::vec::Vec<std::string::String> = res.into_iter().map(|inp| {let inp = *inp; let #ident (inp) = inp; inp}).collect();
-                        let res = res.join("");
-                     })},
-                RegTerm::Terminal(_) | RegTerm::Grouping(_)=> {
-                    (super::owned_push(), quote!{let res = res.join("");})
+                    (
+                        super::owned_push(),
+                        quote! {
+                           let res: std::vec::Vec<std::string::String> = res.into_iter().map(|inp| {let inp = *inp; let #ident (inp) = inp; inp}).collect();
+                           let res = res.join("");
+                        },
+                    )
                 }
-                _ => (super::standard_push(), quote!{})
+                RegTerm::Terminal(_) | RegTerm::Grouping(_) => {
+                    (super::owned_push(), quote! {let res = res.join("");})
+                }
+                _ => (super::standard_push(), quote! {}),
             };
             quote! {
                 #declaration #invocation(input)?;
@@ -53,15 +64,18 @@ pub fn concatenation(RegConcatenation(concs): &RegConcatenation) -> TokenStream2
             let (push, post) = match term {
                 RegTerm::Ident(typ) => {
                     let ident = format_ident!("{}", typ);
-                    (super::owned_push(),
-                     quote!{
-                        let res: std::vec::Vec<std::string::String> = res.into_iter().map(|inp| {let inp = *inp; let #ident (inp) = inp; inp}).collect();
-                        let res = res.join("");
-                     })},
-                RegTerm::Terminal(_) | RegTerm::Grouping(_)=> {
-                    (super::owned_push(), quote!{let res = res.join("");})
+                    (
+                        super::owned_push(),
+                        quote! {
+                           let res: std::vec::Vec<std::string::String> = res.into_iter().map(|inp| {let inp = *inp; let #ident (inp) = inp; inp}).collect();
+                           let res = res.join("");
+                        },
+                    )
                 }
-                _ => (super::standard_push(), quote!{})
+                RegTerm::Terminal(_) | RegTerm::Grouping(_) => {
+                    (super::owned_push(), quote! {let res = res.join("");})
+                }
+                _ => (super::standard_push(), quote! {}),
             };
             quote! {
                 #declaration #invocation(input)?;

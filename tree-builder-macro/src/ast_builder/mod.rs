@@ -47,12 +47,16 @@ impl<'a> IncludeAnalysis<'a> {
     }
 
     pub fn generate_type(&self) -> TokenStream2 {
-        let Self { children: _, node } = self;
+        let Self { node, .. } = self;
         let (wrapper, term): (fn(TokenStream2) -> TokenStream2, &Term) = match node {
             Factor::Optional(term) => (|x: TokenStream2| quote! {std::option::Option<#x>}, term),
+            Factor::OneOrMore(term) if matches!(term, Term::Metacharacter(_))
+                => (|x: TokenStream2| x, term),
             Factor::OneOrMore(term) => (|x: TokenStream2| quote! {std::vec::Vec<#x>}, term),
+            Factor::ZeroOrMore(term) if matches!(term, Term::Metacharacter(_))
+                => (|x: TokenStream2| x, term),
             Factor::ZeroOrMore(term) => (|x: TokenStream2| quote! {std::vec::Vec<#x>}, term),
-            Factor::Term(term) => (|x: TokenStream2| quote! {#x}, term),
+            Factor::Term(term) => (|x: TokenStream2| x, term),
         };
         if !node.is_grouping() {
             wrapper(Self::term_to_type(term))
@@ -73,7 +77,7 @@ impl<'a> IncludeAnalysis<'a> {
     }
 
     fn type_from_grouping(analysis: &Self) -> TokenStream2 {
-        let wrapper = if analysis.children.len() > 1 {
+        let wrapper = if analysis.children.len() > 1 || analysis.children.is_empty() {
             |x: Vec<TokenStream2>| quote!((#(#x),*))
         } else {
             |x: Vec<TokenStream2>| {

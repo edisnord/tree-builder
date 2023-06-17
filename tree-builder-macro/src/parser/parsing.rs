@@ -41,7 +41,7 @@ pub fn specification<'a>(input: &'a str) -> IResult<&str, Specification, Verbose
 
     delimited(
         skip,
-        separated_list1(skip, rule).map(Specification),
+        many0(rule).map(Specification),
         opt(skip),
     )(input)
 }
@@ -542,21 +542,22 @@ mod tests {
 //        );
 //    }
 //
-    #[test]
-    fn test_metacharacters() {
-        let output = metacharacter(r#"[^"\]"#).unwrap().1;
-        assert_eq!(
-            Metacharacter::ExcludingSquareBrackets(vec!['"', '\\']),
-            output
-        );
-        let output = metacharacter(r#"["\]"#).unwrap().1;
-        assert_eq!(Metacharacter::SquareBrackets(vec!['"', '\\']), output);
-        let output = metacharacter(r#"[A-Za-z1-9]"#).unwrap().1;
-        let output = delimited(tag("aaa"), metacharacter, tag("bbb"))(r#"aaa.bbb"#)
-            .unwrap()
-            .1;
-        assert_eq!(Metacharacter::AllChars, output);
-    }
+#[test]
+fn test_metacharacters() {
+    let output = metacharacter(r#"[^"\]"#).unwrap().1;
+    assert_eq!(
+        Metacharacter::ExcludingSquareBrackets(vec!['"', '\\']),
+        output
+    );
+    let output = metacharacter(r#"["\]"#).unwrap().1;
+    assert_eq!(Metacharacter::SquareBrackets(vec!['"', '\\']), output);
+    let output = metacharacter(r#"[A-Za-z1-9]"#).unwrap().1;
+    let output = delimited(tag("aaa"), metacharacter, tag("bbb"))(r#"aaa.bbb"#)
+        .unwrap()
+        .1;
+    assert_eq!(Metacharacter::AllChars, output);
+}
+
 //
 //    #[test]
 //    fn test_specification() {

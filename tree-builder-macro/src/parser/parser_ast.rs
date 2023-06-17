@@ -3,7 +3,7 @@
 /// Terminal example: "Terminal" -> Terminal("Terminal".to_owned())
 ///
 /// Cannot be included using the @ syntax so has no impact on the AST generation, but does have impact in parser generation
-#[derive(PartialEq, Eq, Debug)]
+#[derive(PartialEq, Eq, Debug, Clone)]
 pub struct Terminal(pub String);
 
 /// Representation of an Alternation in treebuilder syntax
@@ -45,10 +45,10 @@ pub struct StructRule {
 }
 
 /// Representation of a concatenation of many factors in treebuilder's syntax
-#[derive(PartialEq, Eq, Debug)]
+#[derive(PartialEq, Eq, Debug, Clone)]
 pub struct Concatenation(pub Vec<ConcatKind>);
 
-#[derive(PartialEq, Eq, Debug)]
+#[derive(PartialEq, Eq, Debug, Clone)]
 pub enum ConcatKind {
     Factor(Factor),
     Include(Include),
@@ -59,7 +59,7 @@ pub enum ConcatKind {
 /// Vec, an Optional or simply be unwrapped inside a variant.
 ///
 /// In parser generation factors help determine how many times a term may be parsed
-#[derive(PartialEq, Eq, Debug)]
+#[derive(PartialEq, Eq, Debug, Clone)]
 pub enum Factor {
     Optional(Term),   // opt()
     ZeroOrMore(Term), // many0
@@ -77,6 +77,26 @@ impl Factor {
                 | Factor::ZeroOrMore(Term::Grouping(_))
         )
     }
+
+    pub fn is_metachar(&self) -> bool {
+        matches!(
+            self,
+            Factor::Term(Term::Metacharacter(_))
+                | Factor::Optional(Term::Metacharacter(_))
+                | Factor::OneOrMore(Term::Metacharacter(_))
+                | Factor::ZeroOrMore(Term::Metacharacter(_))
+        )
+    }
+
+    pub fn is_terminal(&self) -> bool {
+        matches!(
+            self,
+            Factor::Term(Term::Terminal(_))
+                | Factor::Optional(Term::Terminal(_))
+                | Factor::OneOrMore(Term::Terminal(_))
+                | Factor::ZeroOrMore(Term::Terminal(_))
+        )
+    }
 }
 
 /// A term is the smallest part of treebuilder's syntax, represents either a terminal
@@ -85,7 +105,7 @@ impl Factor {
 /// in AST generation only Includes have impact in the amount of elements inside a tuple variant,
 /// in parser generation all of the variants of a term have an impact in the selection of the nom parser to be used
 /// for parsing
-#[derive(PartialEq, Eq, Debug)]
+#[derive(PartialEq, Eq, Debug, Clone)]
 pub enum Term {
     Terminal(Terminal),           // tag()
     Grouping(Grouping),           // po mendoj ta bej funksion mvete
@@ -93,10 +113,10 @@ pub enum Term {
     Ident(String),                // Parser i identit
 }
 
-#[derive(PartialEq, Eq, Debug)]
+#[derive(PartialEq, Eq, Debug, Clone)]
 pub struct Include(pub Factor);
 
-#[derive(PartialEq, Eq, Debug)]
+#[derive(PartialEq, Eq, Debug, Clone)]
 pub struct Grouping(pub Box<Concatenation>, pub Option<String>);
 
 #[derive(PartialEq, Eq, Debug)]
