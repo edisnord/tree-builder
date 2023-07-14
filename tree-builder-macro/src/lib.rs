@@ -54,7 +54,7 @@ pub fn rule(input: TokenStream) -> TokenStream {
     let mut ast = match parser::rule(&input){
         Ok((_, out)) => out,
         Err(nom::Err::Error(e)) => panic!("{}", nom::error::convert_error(input.as_str(), e)),
-        _ => panic!("??")
+        _ => panic!("Unknown error, please open a github issue which includes your source code")
     };
     rule_kind_to_stream(&mut ast).into()
 }
