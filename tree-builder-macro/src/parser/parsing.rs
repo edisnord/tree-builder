@@ -10,7 +10,7 @@ use nom::{
     character::complete::{alpha1, alphanumeric1, multispace0, multispace1},
     combinator::{eof, map, opt, recognize},
     error::{ParseError, VerboseError},
-    multi::many0_count,
+    multi::{many0_count, many_till},
     multi::{many0, separated_list1},
     sequence::{delimited, pair, preceded, separated_pair, terminated},
     IResult, Parser,
@@ -41,7 +41,7 @@ pub fn specification<'a>(input: &'a str) -> IResult<&str, Specification, Verbose
 
     delimited(
         skip,
-        many0(rule).map(Specification),
+        map(many_till(rule, eof), |(x, _)| Specification(x)),
         opt(skip),
     )(input)
 }

@@ -1,19 +1,19 @@
 #[test]
 fn math_expr_parser(){
     let t = trybuild::TestCases::new();
-    t.pass("examples/test/math_expr*.rs");
+    t.pass("tests/test/math_expr*.rs");
 }
 
 #[test]
 fn regex_tests(){
     let t = trybuild::TestCases::new();
-    t.pass("examples/test/regex*.rs");
+    t.pass("tests/test/regex*.rs");
 }
 
 #[test]
 fn struct_tests(){
     let t = trybuild::TestCases::new();
-    t.pass("examples/test/struct*.rs");
+    t.pass("tests/test/struct*.rs");
 }
 
 #[test]

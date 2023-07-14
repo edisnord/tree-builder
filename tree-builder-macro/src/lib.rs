@@ -21,8 +21,8 @@ pub fn build_tree(input: TokenStream) -> TokenStream {
     let input = input.join("");
     let Specification(mut ast) = match parser::specification(&input){
         Ok((_, out)) => out,
-        Err(nom::Err::Error(e)) => panic!("{}", nom::error::convert_error(input.as_str(), e)),
-        _ => panic!("??")
+        Err(nom::Err::Error(e) | nom::Err::Failure(e)) => panic!("{}", nom::error::convert_error(input.as_str(), e)),
+        _ => panic!("Unknown error. Please report this error on GitHub issues, together with the grammar you used")
     };
     let tokens: Vec<proc_macro2::TokenStream> = ast.iter_mut().map(rule_kind_to_stream).collect();
     quote!{
@@ -39,8 +39,8 @@ pub fn ast_parser_maker(input: TokenStream) -> TokenStream {
     let input = input.join("");
     let mut ast = match parser::struct_rule(&input){
         Ok((_, out)) => out,
-        Err(nom::Err::Error(e)) => panic!("{}", nom::error::convert_error(input.as_str(), e)),
-        _ => panic!("??")
+        Err(nom::Err::Error(e) | nom::Err::Failure(e)) => panic!("{}", nom::error::convert_error(input.as_str(), e)),
+        _ => panic!("Unknown error. Please report this error on GitHub issues, together with the grammar you used")
     };
     ast_builder::parser_builder::gen_parser(&mut ast, None).into()
 }

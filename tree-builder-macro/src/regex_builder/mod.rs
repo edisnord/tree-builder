@@ -84,7 +84,7 @@ pub fn rule(RegRule { lhs, rhs }: &mut RegRule) -> TokenStream2 {
         struct #ident(String);
 
         impl tree_builder::Parser for #ident {
-            fn parse<'a>(input: &'a str) -> tree_builder::__private::nom::IResult<&str, std::boxed::Box<Self>, tree_builder::__private::nom::error::VerboseError<&str>> {
+            fn parse<'a>(input: &'a str) -> tree_builder::__private::nom::IResult<&str, std::boxed::Box<#ident>, tree_builder::__private::nom::error::VerboseError<&str>> {
                 #rhs
                 Ok((input, std::boxed::Box::new(Self(result))))
             }

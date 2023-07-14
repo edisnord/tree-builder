@@ -77,7 +77,7 @@ pub fn gen_parser(
     let ident = format_ident!("{}", lhs);
     quote! {
         impl tree_builder::Parser for #ident {
-            fn parse<'a>(input: &'a str) -> tree_builder::__private::nom::IResult<&str, std::boxed::Box<Self>, tree_builder::__private::nom::error::VerboseError<&str>> {
+            fn parse<'a>(input: &'a str) -> tree_builder::__private::nom::IResult<&str, std::boxed::Box<#ident>, tree_builder::__private::nom::error::VerboseError<&str>> {
                 #rhs
                 return Ok((input, std::boxed::Box::new(result)))
             }

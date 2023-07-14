@@ -1,7 +1,12 @@
 [package]
 name = "tree-builder-macro"
-version = "0.1.0"
+version = "0.0.1"
 edition = "2021"
+authors = ["Johann Hofmann"]
+license = "GPL-3.0"
+license-file = "LICENSE.txt"
+keywords = ["treebuilder", "macro", "parser generator", "nom"]
+categories = ["development-tools", "parsing"]
 
 [lib]
 proc-macro = true

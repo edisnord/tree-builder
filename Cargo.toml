@@ -1,7 +1,12 @@
 [package]
 name = "tree-builder"
+authors = ["Johann Hofmann"]
 version = "0.1.0"
 edition = "2021"
+license = "GPL-3.0"
+license-file = "LICENSE.txt"
+keywords = ["treebuilder", "macro", "parser generator", "nom"]
+categories = ["development-tools", "parsing"]
 
 [dev-dependencies]
 trybuild = { version = "1.0.80", features = ["diff"] }

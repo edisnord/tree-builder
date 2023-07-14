@@ -4,14 +4,20 @@ use quote::{format_ident, quote};
 use crate::ast_builder::parser_builder::analyze_groupings;
 
 pub fn concatenation(ref mut conc: &mut Concatenation) -> (TokenStream2, TokenStream2) {
+    // Variable where all the concatenations are ultimately stored
     let mut all: Vec<TokenStream2> = vec![];
+    // Names of included conocatenations
     let mut names: Vec<TokenStream2> = vec![];
+    // Closures to be inserted in the beginning for grouping parsers
     let closures: TokenStream2 = analyze_groupings(conc);
     let mut number: usize = 0;
+    // Fill all with any concatenation values
     for conc in &mut(conc.0) {
         all.push(match conc {
             ConcatKind::Include(Include(fact)) => {
                 let name = format_ident!("res{}", number);
+                // Decide if results should be moved to owned or not based
+                // on parser type
                 let post =
                     if matches!(fact, Factor::Optional(Term::Terminal(_) | Term::Metacharacter(_))) {
                         quote!{
