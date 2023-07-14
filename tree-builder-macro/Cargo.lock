@@ -81,7 +81,7 @@ dependencies = [
 
 [[package]]
 name = "tree-builder-macro"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "nom",
  "proc-macro2",

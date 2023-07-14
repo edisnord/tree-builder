@@ -5,7 +5,7 @@ edition = "2021"
 authors = ["Johann Hofmann"]
 license = "GPL-3.0"
 license-file = "LICENSE.txt"
-keywords = ["treebuilder", "macro", "parser generator", "nom"]
+keywords = ["treebuilder", "macro", "parser", "nom"]
 categories = ["development-tools", "parsing"]
 
 [lib]
