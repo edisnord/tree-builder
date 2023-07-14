@@ -5,8 +5,9 @@ version = "0.0.1"
 edition = "2021"
 license = "GPL-3.0"
 description = "Parser Generator library which uses Nom and procedural macros to generate recursive-descent parsers."
+repository = "https://github.com/edisnord/tree-builder"
 license-file = "LICENSE.txt"
-keywords = ["treebuilder", "macro", "parser generator", "nom"]
+keywords = ["treebuilder", "macro", "parser", "nom"]
 categories = ["development-tools", "parsing"]
 
 [dev-dependencies]
