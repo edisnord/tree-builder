@@ -1,6 +1,7 @@
 [package]
 name = "tree-builder-macro"
 description = "Macros for the tree-builder crate."
+repository = "https://github.com/edisnord/tree-builder"
 version = "0.0.1"
 edition = "2021"
 authors = ["Edis Hasaj"]
