@@ -1,2 +1,3 @@
 target/*
+examples/test.json
 tree-builder-macro/target/*
