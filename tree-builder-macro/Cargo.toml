@@ -2,7 +2,7 @@
 name = "tree-builder-macro"
 version = "0.0.1"
 edition = "2021"
-authors = ["Johann Hofmann"]
+authors = ["Edis Hasaj"]
 license = "GPL-3.0"
 license-file = "LICENSE.txt"
 keywords = ["treebuilder", "macro", "parser", "nom"]
