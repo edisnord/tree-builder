@@ -1,9 +1,10 @@
 [package]
 name = "tree-builder"
 authors = ["Edis Hasaj"]
-version = "0.1.0"
+version = "0.0.1"
 edition = "2021"
 license = "GPL-3.0"
+description = "Parser Generator library which uses Nom and procedural macros to generate recursive-descent parsers."
 license-file = "LICENSE.txt"
 keywords = ["treebuilder", "macro", "parser generator", "nom"]
 categories = ["development-tools", "parsing"]
@@ -12,5 +13,5 @@ categories = ["development-tools", "parsing"]
 trybuild = { version = "1.0.80", features = ["diff"] }
 
 [dependencies]
-tree-builder-macro = {path = "./tree-builder-macro"}
+tree-builder-macro = "0.0.1"
 nom = "7.1.3"

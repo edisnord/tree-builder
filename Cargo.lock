@@ -157,7 +157,7 @@ dependencies = [
 
 [[package]]
 name = "tree-builder"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "nom",
  "tree-builder-macro",
@@ -167,6 +167,8 @@ dependencies = [
 [[package]]
 name = "tree-builder-macro"
 version = "0.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2c05ffbf87ee97c70de22c48593a346304d838749a7dcbcc56be254109b843c9"
 dependencies = [
  "nom",
  "proc-macro2",
