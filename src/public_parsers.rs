@@ -3,6 +3,8 @@ use nom::error::ParseError;
 use nom::IResult;
 use nom::{AsChar, InputIter, InputTake, Slice};
 
+/// Recognizes one character and checks if it satisfies a predicate. The parser will
+/// return the same type with the input.
 pub fn satisfy_one<F, I, Error: ParseError<I>>(cond: F) -> impl Fn(I) -> IResult<I, I, Error>
 where
     I: Slice<RangeFrom<usize>> + InputIter + InputTake,
